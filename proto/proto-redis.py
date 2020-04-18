@@ -1,16 +1,14 @@
 from collections import defaultdict
 import time
 
-table = {}
-expire = defaultdict(lambda: float('inf'))
-
 
 class ProtoRedis(object):
     def __init__(self):
-        self.dict = table
+        self.dict = {}
+        self.expire = defaultdict(lambda: float('inf'))
 
     def __expired(self, key):
-        return time.monotonic() > expire[key]
+        return time.monotonic() > self.expire[key]
 
     def __exists(self, key):
         return key in self.dict
@@ -18,7 +16,7 @@ class ProtoRedis(object):
     def ping(self, message="PONG"):
         return message
 
-    def set(self, key, val, exp_timer=("", 0), cond="", keepttl=False):
+    def set(self, key, val, exp_timer=("", 0), cond=""):
         # SET key val [EX secs| PX msecs] [NX set if key not exist| XX set if key exist] [KEEPTTL]
         timer = 0
         if exp_timer[0] == "EX" and type(exp_timer[1], int):
@@ -28,19 +26,26 @@ class ProtoRedis(object):
         elif exp_timer[0] != "":
             return NotImplementedError
 
-        if cond == "NX" and key in self.dict:
+        if cond == "NX" and self.__exists(key):
             return -1
-        elif cond == "XX" and key not in self.dict:
+        elif cond == "XX" and not self.__exists(key):
             return -1
         elif cond != "":
             return NotImplementedError
 
+        if key in self.expire:
+            self.expire[key] = 0
+        if timer:
+            self.expire[key] = timer
+        self.dict[key] = val
+        return "OK"
+
     def get(self, key):
-        if not self.__exists:
+        if not self.__exists(key):
             return -1
 
         if self.__expired(key):
-            del expire[key]
+            del self.expire[key]
             del self.dict[key]
             return -1
 
@@ -48,7 +53,10 @@ class ProtoRedis(object):
         return len(val), val
 
     def expire(self, key, seconds):
-        pass
+        if key not in self.expire:
+            return 0
+        self.expire[key] = seconds
+        return 1
 
     def ttl(self, key):
         pass
