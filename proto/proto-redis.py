@@ -50,13 +50,21 @@ class ProtoRedis(object):
             return -1
 
         val = self.dict[key]
-        return len(val), val
+        return val
 
     def expire(self, key, seconds):
-        if key not in self.expire:
+        if key not in self.expire or self.expire[key] == 0:
             return 0
-        self.expire[key] = seconds
+        self.expire[key] = time.monotonic() + seconds
         return 1
 
     def ttl(self, key):
-        pass
+        if not self.__exists(key):
+            return -2
+        elif key not in self.expire:
+            return -1
+        elif self.__expired(key):
+            del self.expire[key]
+            del self.dict[key]
+            return -2
+        return int(self.expire[key] - time.monotonic())
