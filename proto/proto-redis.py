@@ -19,19 +19,19 @@ class ProtoRedis(object):
     def set(self, key, val, exp_timer=("", 0), cond=""):
         # SET key val [EX secs| PX msecs] [NX set if key not exist| XX set if key exist] [KEEPTTL]
         timer = 0
-        if exp_timer[0] == "EX" and type(exp_timer[1], int):
+        if exp_timer[0] == "ex" and type(exp_timer[1], int):
             timer = time.monotonic() + exp_timer[1]
-        elif exp_timer[0] == "PX" and type(exp_timer[1], int):
+        elif exp_timer[0] == "px" and type(exp_timer[1], int):
             timer = time.monotonic() + exp_timer[1]/1000
         elif exp_timer[0] != "":
-            return NotImplementedError
+            raise SyntaxError
 
-        if cond == "NX" and self.__exists(key):
+        if cond == "nx" and self.__exists(key):
             return -1
-        elif cond == "XX" and not self.__exists(key):
+        elif cond == "xx" and not self.__exists(key):
             return -1
         elif cond != "":
-            return NotImplementedError
+            raise SyntaxError
 
         if key in self.expire:
             self.expire[key] = 0
