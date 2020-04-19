@@ -1,6 +1,6 @@
 venv/*
 .vscode/*
 proto/llrb.py
-proto/__pycache__/*
-*.txt
+**/__pycache__/*
+log.txt
 

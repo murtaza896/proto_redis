@@ -7,6 +7,8 @@ import hiredis
 import sys
 import functools
 
+__all__ = ["ProtoRedisProtocol", "main"]
+
 meta = {
     b"get": "get",
     b"ping": "ping",
