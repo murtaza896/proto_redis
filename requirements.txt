@@ -1,0 +1,9 @@
+Package          Version
+---------------- -------
+autopep8         1.5.1  
+hiredis          1.0.1  
+pip              20.0.2 
+pycodestyle      2.5.0  
+setuptools       46.1.3 
+sortedcontainers 2.1.0  
+wheel            0.34.2 
