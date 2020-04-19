@@ -22,6 +22,17 @@ class ProtoRedis(object):
     def __exists(self, key):
         return key in self.cache
 
+    @staticmethod
+    def _fix_range(lo, hi, length):
+        if lo < 0:
+            lo = max(0, lo + length)
+        if hi < 0:
+            hi += length
+        if lo > hi or lo >= length:
+            return -1, -1
+        hi = min(hi, length - 1)
+        return lo, hi + 1
+
     def ping(self, message="PONG"):
         return message
 
@@ -136,11 +147,35 @@ class ProtoRedis(object):
             return changed
         return len(zset) - l_prev
 
-    def zrange(self, key, start, stop, scored=False):
-        pass
+    def __zrange_generic(self, key, start, stop, reverse, *args):
+        zset = self.get(key)
+        if zset == -1:
+            return []
+        if len(args) > 1 or (args and args[0] != "withscores"):
+            raise DBError("Syntax Error")
+        start, stop = self._fix_range(start, stop, len(zset))
+        if reverse:
+            start, stop = len(zset) - stop, len(zset) - start
+        items = zset.islice_score(start, stop, reverse)
+        scored = bool(args)
+        items = list(map(lambda y: y if scored else y[0], map(
+            lambda x: (x[1], decode(x[0], float)), items)))
+        return items
+
+    def zrange(self, key, start, stop, *args):
+        return self.__zrange_generic(key, start, stop, False, args)
+
+    def zrevrange(self, key, start, stop, *args):
+        return self.__zrange_generic(key, start, stop, True, args)
 
     def zrank(self, key, member):
-        pass
+        zset = self.get(key)
+        if zset == -1:
+            return None
+        try:
+            return zset.rank(member)
+        except Exception:
+            return None
 
 
 class ZSet:
@@ -178,6 +213,22 @@ class ZSet:
         self.mem2score[val] = score
         self.scores.add((score, val))
         return True
+
+    def discard(self, key):
+        try:
+            score = self.mem2score.pop(key)
+        except KeyError:
+            return
+        self.scores.remove((score, key))
+
+    def items(self):
+        return self.mem2score.items()
+
+    def rank(self, member):
+        return self.scores.index((self.mem2score[member], member))
+
+    def islice_score(self, start, stop, reverse=False):
+        return self.scores.islice(start, stop, reverse)
 
 
 class Error(Exception):
