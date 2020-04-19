@@ -212,7 +212,7 @@ class ProtoRedis(object):
         if not zset:
             return None
         #print(args, type(args), args[0], type(args[0]))
-        print(key, start, stop, reverse, args)
+        #print(key, start, stop, reverse, args)
         if len(args) > 1 or (args and args[0].lower() != b"withscores"):
             raise DBError("Syntax Error")
         start, stop = self._fix_range(start, stop, len(zset))
@@ -228,7 +228,7 @@ class ProtoRedis(object):
             if scored:
                 ans.append(str(item[1]))
 
-        print(ans)
+        # print(ans)
         return ans
 
     def zrange(self, key, start, stop, *args):
