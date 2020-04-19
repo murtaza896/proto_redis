@@ -54,7 +54,7 @@ class ProtoRedis(object):
         return val
 
     def expire(self, key, seconds):
-        if key not in self.expired or self.expired[key] == 0:
+        if self.__have_expired(key) or not self.__exists(key):
             return 0
         self.expired[key] = time.monotonic() + seconds
         return 1
