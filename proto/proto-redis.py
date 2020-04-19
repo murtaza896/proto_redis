@@ -24,14 +24,15 @@ class ProtoRedis(object):
         elif exp_timer[0] == "px" and type(exp_timer[1], int):
             timer = time.monotonic() + exp_timer[1]/1000
         elif exp_timer[0] != "":
-            raise SyntaxError
+            raise ValueError(
+                "Expiry timer should have type EX or PX and time should be an integer")
 
         if cond == "nx" and self.__exists(key):
             return -1
         elif cond == "xx" and not self.__exists(key):
             return -1
         elif cond != "":
-            raise SyntaxError
+            raise ValueError("Existence condition should be either XX or EX")
 
         if key in self.expire:
             self.expire[key] = 0
