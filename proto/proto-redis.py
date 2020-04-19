@@ -4,14 +4,14 @@ import time
 
 class ProtoRedis(object):
     def __init__(self):
-        self.dict = {}
-        self.expire = defaultdict(lambda: float('inf'))
+        self.cache = {}
+        self.expired = defaultdict(lambda: float('inf'))
 
-    def __expired(self, key):
-        return time.monotonic() > self.expire[key]
+    def __have_expired(self, key):
+        return key in self.expired and time.monotonic() > self.expired[key]
 
     def __exists(self, key):
-        return key in self.dict
+        return key in self.cache
 
     def ping(self, message="PONG"):
         return message
@@ -34,38 +34,38 @@ class ProtoRedis(object):
         elif cond != "":
             raise ValueError("Existence condition should be either XX or EX")
 
-        if key in self.expire:
-            self.expire[key] = 0
+        if key in self.expired:
+            self.expired[key] = 0
         if timer:
-            self.expire[key] = timer
-        self.dict[key] = val
+            self.expired[key] = timer
+        self.cache[key] = val
         return "OK"
 
     def get(self, key):
         if not self.__exists(key):
             return -1
 
-        if self.__expired(key):
-            del self.expire[key]
-            del self.dict[key]
+        if self.__have_expired(key):
+            del self.expired[key]
+            del self.cache[key]
             return -1
 
-        val = self.dict[key]
+        val = self.cache[key]
         return val
 
     def expire(self, key, seconds):
-        if key not in self.expire or self.expire[key] == 0:
+        if key not in self.expired or self.expired[key] == 0:
             return 0
-        self.expire[key] = time.monotonic() + seconds
+        self.expired[key] = time.monotonic() + seconds
         return 1
 
     def ttl(self, key):
         if not self.__exists(key):
             return -2
-        elif key not in self.expire:
+        elif key not in self.expired:
             return -1
-        elif self.__expired(key):
-            del self.expire[key]
-            del self.dict[key]
+        elif self.__have_expired(key):
+            del self.expired[key]
+            del self.cache[key]
             return -2
-        return int(self.expire[key] - time.monotonic())
+        return int(self.expired[key] - time.monotonic())
