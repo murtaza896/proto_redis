@@ -17,6 +17,7 @@ meta = {
     b"ttl": "ttl",
     b"zadd": "zadd",
     b"zrange": "zrange",
+    b"zrevrange": "zrevrange",
     b"zrank": "zrank",
     b"replay": "replay"
 }
