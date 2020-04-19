@@ -1,11 +1,12 @@
+from collections import deque
+from .proto_redis import ProtoRedis
 import asyncio
 import operator
 import hiredis
 import sys
+import functools
 
-from collections import deque
-
-meta = {"get": "_db.get"}
+meta = {b"get": "get", b"ping": "ping"}
 
 
 def serialize_to_wire(value):
@@ -45,35 +46,35 @@ class ProtoRedisProtocol(asyncio.Protocol):
             request = self.parser.gets()
             if not request:
                 break
-            resp = operator.methodcaller(
-                meta.get(request[0], '_db.invalid'), *request[1:])(self)
+            print(request[0])
+
+            try:
+                resp = getattr(self._db, meta.get(
+                    request[0], 'invalid'))(*request[1:])
+            except Exception as e:
+                resp = e
             self.response.append(serialize_to_wire(resp))
 
         self.transport.writelines(self.response)
         self.response.clear()
 
 
-def main() -> int:
-    print("Hello, World!")
-
-    asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-
+def main(hostname='127.0.0.1', port=6970) -> int:
     loop = asyncio.get_event_loop()
-    # Each client connection will create a new protocol instance
-    coro = loop.create_server(ProtoRedisProtocol, "127.0.0.1", 7878)
-    server = loop.run_until_complete(coro)
 
-    # Serve requests until Ctrl+C is pressed
-    print('Serving on {}'.format(server.sockets[0].getsockname()))
+    bound_protocol = functools.partial(ProtoRedisProtocol, ProtoRedis())
+    coro = loop.create_server(bound_protocol, hostname, port)
+    server = loop.run_until_complete(coro)
+    print("Listening on port {}".format(port))
     try:
         loop.run_forever()
     except KeyboardInterrupt:
-        print("User Requested Shutdown")
+        print("User requested shutdown.")
     finally:
-        # Close the server
         server.close()
         loop.run_until_complete(server.wait_closed())
         loop.close()
+        print("Redis is now ready to exit.")
     return 0
 
 

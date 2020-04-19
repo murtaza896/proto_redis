@@ -4,6 +4,8 @@ from sortedcontainers import SortedSet
 import time
 import random
 
+__all__ = ["ProtoRedis", "ZSet", "DBError"]
+
 
 def decode(a, dtype):
     try:
