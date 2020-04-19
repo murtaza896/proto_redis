@@ -3,6 +3,7 @@ from sortedcontainers import SortedSet, SortedList
 
 import time
 import random
+import os
 
 __all__ = ["ProtoRedis", "ZSet", "DBError"]
 
@@ -57,17 +58,21 @@ class ProtoRedis(object):
     def log_dump(self, cmnd, *args):
         t = time.monotonic()
         with open('log.txt', 'a') as fw:
-            fw.write(','.join([str(t), cmnd, *args]) + "\n")
+            # print(("Log", [str(t).encode(), cmnd, *args]))
+            fw.write(
+                (b','.join([str(t).encode(), cmnd, *args])).decode() + "\n")
 
     def replay(self, after=0):
-        with open('log.txt', 'r') as fw:
+        os.system("cp log.txt clog.txt")
+        with open('clog.txt', 'r') as fw:
             for line in fw.readlines():
                 curr_time = time.monotonic()
-                split_line = line.split(",")
+                split_line = line[:-1].encode().split(b",")
                 tm, cmd, args = float(
                     split_line[0]), split_line[1], split_line[2:]
                 if tm < after:
                     continue
+                #print(tm, cmd, *args)
                 if cmd.lower() == b"set":
                     if b"ex" in args:
                         dur = int(args[args.index(b"ex") + 1])
@@ -77,14 +82,16 @@ class ProtoRedis(object):
                         dur = int(args[args.index(b"px") + 1])
                         if time.monotonic() > tm + dur/1000:
                             continue
-                    self.set(*args)
+                    self.set_(*args)
                 elif cmd.lower() == b"expire":
-                    dur = int(args)
+                    dur = int(args[-1])
                     if time.monotonic() > tm + dur:
                         continue
-                    self.expire(dur)
+                    self.expire(*args)
                 elif cmd.lower() == b"zadd":
                     self.zadd(*args)
+        os.system("rm clog.txt")
+        return True
 
     def ping(self, message="PONG"):
         return message
@@ -132,7 +139,7 @@ class ProtoRedis(object):
         if timer:
             self.expired[key] = timer
         self.cache[key] = val
-        self.log_dump('set')
+        self.log_dump(b'set', key, val, *args)
         return True
 
     def get(self, key):
@@ -150,8 +157,8 @@ class ProtoRedis(object):
     def expire(self, key, seconds):
         if self.__have_expired(key) or not self.__exists(key):
             return 0
-        self.expired[key] = time.monotonic() + seconds
-        self.log_dump('expire')
+        self.expired[key] = time.monotonic() + float(seconds)
+        self.log_dump(b'expire', key, seconds)
         return 1
 
     def ttl(self, key):
@@ -167,8 +174,8 @@ class ProtoRedis(object):
 
     def zadd(self, key, *args):
         zset = self.get(key)
-        if not zset:
-            self.set_(key, ZSet())
+        if not isinstance(zset, ZSet):
+            self.cache[key] = ZSet()
             zset = self.get(key)
 
         i, nx, xx, ch, incr = 0, False, False, False, False
@@ -210,14 +217,14 @@ class ProtoRedis(object):
             if (not nx or mem not in zset) and (not xx or mem in zset):
                 changed += int(zset.add(mem, score))
 
-        self.log_dump('zadd')
+        self.log_dump(b'zadd', key, *args)
         if ch:
             return changed
         return len(zset) - l_prev
 
     def __zrange_generic(self, key, start, stop, reverse, *args):
         zset = self.get(key)
-        if not zset:
+        if not isinstance(zset, ZSet):
             return None
         #print(args, type(args), args[0], type(args[0]))
         #print(key, start, stop, reverse, args)
@@ -248,7 +255,7 @@ class ProtoRedis(object):
 
     def zrank(self, key, member):
         zset = self.get(key)
-        if not zset:
+        if not isinstance(zset, ZSet):
             return None
         try:
             return zset.rank(member)
@@ -278,6 +285,10 @@ class ZSet:
             for score, val in self.scores:
                 yield val
         return f()
+
+    def __str__(self):
+        ans = []
+        return
 
     def get(self, key, default=None):
         return self.mem2score.get(key, default)
