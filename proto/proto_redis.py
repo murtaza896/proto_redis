@@ -49,9 +49,9 @@ class ProtoRedis(object):
                 if self.expired[k] == 0 or time.monotonic() - self.expired[k] < 0:
                     del self.cache[k]
                     del self.expired[k]
+            print("{} purged".format(1 - (old_len/len(self.expired))))
             if 4 * (old_len - len(self.expired)) < old_len:
                 break
-            print("{} purged".format(1 - (old_len/len(self.expired))))
         print("Exit purger")
 
     def log_dump(self, cmnd, *args):
