@@ -126,7 +126,7 @@ class ProtoRedis(object):
         if timer:
             self.expired[key] = timer
         self.cache[key] = val
-        self.log_dump()
+        self.log_dump('set')
         return True
 
     def get(self, key):
@@ -145,7 +145,7 @@ class ProtoRedis(object):
         if self.__have_expired(key) or not self.__exists(key):
             return 0
         self.expired[key] = time.monotonic() + seconds
-        self.log_dump()
+        self.log_dump('expire')
         return 1
 
     def ttl(self, key):
