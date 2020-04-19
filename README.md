@@ -8,7 +8,7 @@ This is a protoype of a Redis database attached to a TCP server written in Pytho
 
 ```python
     from proto.server import main
-    main('127.0.0.1','6972') # Runs server on local
+    main('127.0.0.1','6972') # Runs the server on localhost and port 6972 (default)
 ```
 
 now connect with `redis-cli`. Any client will do. Even async clients.
