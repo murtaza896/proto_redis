@@ -40,7 +40,7 @@ class ProtoRedis(object):
         while True:
             old_len = len(self.expired)
             smpl_sz = min(20, old_len)
-            sample = random.sample(expired.keys(), smpl_sz)
+            sample = random.sample(self.expired.keys(), smpl_sz)
             for k in sample:
                 if self.expired[k] == 0 or time.monotonic() - self.expired[k] < 0:
                     del self.cache[k]
@@ -51,7 +51,7 @@ class ProtoRedis(object):
     def log_dump(self, cmnd, *args):
         t = time.monotonic()
         with open('log.txt', 'a') as fw:
-            fw.write(','.join([time, cmnd, *args]))
+            fw.write(','.join([str(t), cmnd, *args]) + "\n")
 
     def replay(self, after=0):
         with open('log.txt', 'r') as fw:

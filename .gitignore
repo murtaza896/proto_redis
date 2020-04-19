@@ -2,4 +2,5 @@ venv/*
 .vscode/*
 proto/llrb.py
 proto/__pycache__/*
+*.txt
 
