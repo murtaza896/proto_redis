@@ -127,7 +127,7 @@ class ProtoRedis(object):
             self.set(key, ZSet())
             zset = self.get(key)
 
-        i, nx, xx, ch = 0, False, False, False
+        i, nx, xx, ch, incr = 0, False, False, False, False
         while i < len(args):
             if args[i] == "nx":
                 nx = True
@@ -138,6 +138,9 @@ class ProtoRedis(object):
             elif args[i] == "ch":
                 ch = True
                 i += 1
+            elif args[i] == "incr":
+                incr = True
+                i += 1
             else:
                 break
 
@@ -145,13 +148,19 @@ class ProtoRedis(object):
             raise DBError("Can't have both nx and xx in zadd")
 
         els = args[i:]
-        if not els or len(els) % 2 != 0:
+        if (incr and len(els) != 2) or (not els or len(els) % 2 != 0):
             raise DBError("Syntax Error")
 
         items = [(decode(els[j], float), els[j + 1])
                  for j in range(0, len(els), 2)]
         l_prev = len(zset)
         changed = 0
+
+        if incr:
+            score, mem = items
+            score += zset.get(mem, 0)
+            zset.add(mem, score)
+            return score
 
         for score, mem in items:
             if (not nx or mem not in zset) and (not xx or mem in zset):
