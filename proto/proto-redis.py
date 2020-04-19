@@ -3,6 +3,14 @@ from sortedcontainers import SortedSet
 import time
 
 
+def decode(a, dtype):
+    try:
+        ans = dtype(a)
+    except ValueError:
+        raise DBError("Invalid conversion from one type to another")
+    return ans
+
+
 class ProtoRedis(object):
     def __init__(self):
         self.cache = {}
@@ -28,12 +36,12 @@ class ProtoRedis(object):
                 xx = True
                 i += 1
             elif args[i] == "ex" and i + 1 < len(args):
-                ex = int(args[i + 1]) if isinstance(args[i + 1], int) else 0
+                ex = decode(args[i + 1], int)
                 if ex <= 0:
                     raise DBError("Invalid expire time")
                 i += 2
             elif args[i] == "px" and i + 1 < len(args):
-                px = int(args[i + 1]) if isinstance(args[i + 1], int) else 0
+                px = decode(args[i + 1], int)
                 if px <= 0:
                     raise DBError("Invalid expire time")
                 i += 2
@@ -43,9 +51,7 @@ class ProtoRedis(object):
         if (xx and nx) or (px is not None and ex is not None):
             raise DBError("Syntax Error")
 
-        if nx and key:
-            return None
-        if xx and not key:
+        if (nx and key) or (xx and not key):
             return None
 
         timer = 0
@@ -90,7 +96,7 @@ class ProtoRedis(object):
             return -2
         return int(self.expired[key] - time.monotonic())
 
-    def zadd(self, ss_key, cond="", changed="", incr=False, *args):
+    def zadd(self, key, *args):
         pass
 
     def zrange(self, key, start, stop, scored=False):
