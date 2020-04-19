@@ -1,5 +1,6 @@
 from collections import deque
 from .proto_redis import ProtoRedis
+import time
 import asyncio
 import operator
 import hiredis
@@ -14,7 +15,8 @@ meta = {
     b"ttl": "ttl",
     b"zadd": "zadd",
     b"zrange": "zrange",
-    b"zrank": "zrank"
+    b"zrank": "zrank",
+    b"replay": "replay"
 }
 
 
@@ -44,12 +46,17 @@ class ProtoRedisProtocol(asyncio.Protocol):
         self._db = db
         self.response = deque()
         self.parser = hiredis.Reader()
+        self.timer = time.monotonic()
 
     def connection_made(self, transport: asyncio.Transport):
         self.transport = transport
 
     def data_received(self, data: bytes):
         self.parser.feed(data)
+        dur = time.monotonic() - self.timer
+        if dur >= .1:
+            self._db.purger()
+            self.timer = time.monotonic()
 
         while True:
             request = self.parser.gets()

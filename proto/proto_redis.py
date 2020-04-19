@@ -53,13 +53,15 @@ class ProtoRedis(object):
         with open('log.txt', 'a') as fw:
             fw.write(','.join([time, cmnd, *args]))
 
-    def replay(self):
+    def replay(self, after=0):
         with open('log.txt', 'r') as fw:
             for line in fw.readlines():
                 curr_time = time.monotonic()
                 split_line = line.split(",")
                 tm, cmd, args = float(
                     split_line[0]), split_line[1], split_line[2:]
+                if tm < after:
+                    continue
                 if cmd.lower() == b"set":
                     if b"ex" in args:
                         dur = int(args[args.index(b"ex") + 1])
