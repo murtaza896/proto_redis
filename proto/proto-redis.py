@@ -1,4 +1,5 @@
 from collections import defaultdict
+from sortedcontainers import SortedSet
 import time
 
 
@@ -16,23 +17,42 @@ class ProtoRedis(object):
     def ping(self, message="PONG"):
         return message
 
-    def set(self, key, val, exp_timer=("", 0), cond=""):
+    def set(self, key, val, *args):
         # SET key val [EX secs| PX msecs] [NX set if key not exist| XX set if key exist] [KEEPTTL]
-        timer = 0
-        if exp_timer[0] == "ex" and type(exp_timer[1], int):
-            timer = time.monotonic() + exp_timer[1]
-        elif exp_timer[0] == "px" and type(exp_timer[1], int):
-            timer = time.monotonic() + exp_timer[1]/1000
-        elif exp_timer[0] != "":
-            raise ValueError(
-                "Expiry timer should have type EX or PX and time should be an integer")
+        i, px, ex, xx, nx = 0, None, None, False, False
+        while i < len(args):
+            if args[i] == "nx":
+                nx = True
+                i += 1
+            elif args[i] == "xx":
+                xx = True
+                i += 1
+            elif args[i] == "ex" and i + 1 < len(args):
+                ex = int(args[i + 1]) if isinstance(args[i + 1], int) else 0
+                if ex <= 0:
+                    raise DBError("Invalid expire time")
+                i += 2
+            elif args[i] == "px" and i + 1 < len(args):
+                px = int(args[i + 1]) if isinstance(args[i + 1], int) else 0
+                if px <= 0:
+                    raise DBError("Invalid expire time")
+                i += 2
+            else:
+                raise DBError("Syntax Error")
 
-        if cond == "nx" and self.__exists(key):
-            return -1
-        elif cond == "xx" and not self.__exists(key):
-            return -1
-        elif cond != "":
-            raise ValueError("Existence condition should be either XX or EX")
+        if (xx and nx) or (px is not None and ex is not None):
+            raise DBError("Syntax Error")
+
+        if nx and key:
+            return None
+        if xx and not key:
+            return None
+
+        timer = 0
+        if ex is not None:
+            timer = time.monotonic() + ex
+        if px is not None:
+            timer = time.monotonic() + px / 1000.0
 
         if key in self.expired:
             self.expired[key] = 0
@@ -78,3 +98,27 @@ class ProtoRedis(object):
 
     def zrank(self, key, member):
         pass
+
+
+class ZSet:
+    def __init__(self):
+        self.mem2score = {}
+        self.scores = SortedSet()
+
+    def add(self, val, score):
+        s_prev = self.mem2score.get(val, None)
+        if s_prev:
+            if s_prev == score:
+                return False
+            self.scores.remove((s_prev, val))
+
+        pass
+
+
+class Error(Exception):
+    pass
+
+
+class DBError(Error):
+    def __init__(self, message):
+        self.message = message
