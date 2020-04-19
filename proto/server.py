@@ -6,7 +6,16 @@ import hiredis
 import sys
 import functools
 
-meta = {b"get": "get", b"ping": "ping"}
+meta = {
+    b"get": "get",
+    b"ping": "ping",
+    b"set": "set_",
+    b"expire": "expire",
+    b"ttl": "ttl",
+    b"zadd": "zadd",
+    b"zrange": "zrange",
+    b"zrank": "zrank"
+}
 
 
 def serialize_to_wire(value):
@@ -46,14 +55,15 @@ class ProtoRedisProtocol(asyncio.Protocol):
             request = self.parser.gets()
             if not request:
                 break
-            print(request[0])
+            print(request)
 
             try:
                 resp = getattr(self._db, meta.get(
                     request[0], 'invalid'))(*request[1:])
             except Exception as e:
                 resp = e
-            self.response.append(serialize_to_wire(resp))
+            finally:
+                self.response.append(serialize_to_wire(resp))
 
         self.transport.writelines(self.response)
         self.response.clear()

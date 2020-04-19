@@ -1,4 +1,5 @@
 venv/*
 .vscode/*
 proto/llrb.py
+proto/__pycache__/*
 

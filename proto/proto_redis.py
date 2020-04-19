@@ -54,31 +54,31 @@ class ProtoRedis(object):
     def invalid(self, *args):
         raise DBError("ERR: Invalid Command")
 
-    def set(self, key, val, *args):
+    def set_(self, key, val, *args):
         # SET key val [EX secs| PX msecs] [NX set if key not exist| XX set if key exist] [KEEPTTL]
         i, px, ex, xx, nx = 0, None, None, False, False
         while i < len(args):
-            if args[i].lower() == "nx":
+            if args[i].lower() == b"nx":
                 nx = True
                 i += 1
-            elif args[i].lower() == "xx":
+            elif args[i].lower() == b"xx":
                 xx = True
                 i += 1
-            elif args[i].lower() == "ex" and i + 1 < len(args):
+            elif args[i].lower() == b"ex" and i + 1 < len(args):
                 ex = decode(args[i + 1], int)
                 if ex <= 0:
                     raise DBError("Invalid expire time")
                 i += 2
-            elif args[i].lower() == "px" and i + 1 < len(args):
+            elif args[i].lower() == b"px" and i + 1 < len(args):
                 px = decode(args[i + 1], int)
                 if px <= 0:
                     raise DBError("Invalid expire time")
                 i += 2
             else:
-                raise DBError("Syntax Error")
+                raise DBError("Syntax Error 1")
 
         if (xx and nx) or (px is not None and ex is not None):
-            raise DBError("Syntax Error")
+            raise DBError("Syntax Error 2")
 
         if (nx and key) or (xx and not key):
             return None
@@ -128,21 +128,21 @@ class ProtoRedis(object):
     def zadd(self, key, *args):
         zset = self.get(key)
         if not zset:
-            self.set(key, ZSet())
+            self._set(key, ZSet())
             zset = self.get(key)
 
         i, nx, xx, ch, incr = 0, False, False, False, False
         while i < len(args):
-            if args[i].lower() == "nx":
+            if args[i].lower() == b"nx":
                 nx = True
                 i += 1
-            elif args[i].lower() == "xx":
+            elif args[i].lower() == b"xx":
                 xx = True
                 i += 1
-            elif args[i].lower() == "ch":
+            elif args[i].lower() == b"ch":
                 ch = True
                 i += 1
-            elif args[i].lower() == "incr":
+            elif args[i].lower() == b"incr":
                 incr = True
                 i += 1
             else:
@@ -178,7 +178,7 @@ class ProtoRedis(object):
         zset = self.get(key)
         if not zset:
             return None
-        if len(args) > 1 or (args and args[0].lower() != "withscores"):
+        if len(args) > 1 or (args and args[0].lower() != b"withscores"):
             raise DBError("Syntax Error")
         start, stop = self._fix_range(start, stop, len(zset))
         if reverse:
