@@ -54,18 +54,18 @@ class ProtoRedis(object):
         # SET key val [EX secs| PX msecs] [NX set if key not exist| XX set if key exist] [KEEPTTL]
         i, px, ex, xx, nx = 0, None, None, False, False
         while i < len(args):
-            if args[i] == "nx":
+            if args[i].lower() == "nx":
                 nx = True
                 i += 1
-            elif args[i] == "xx":
+            elif args[i].lower() == "xx":
                 xx = True
                 i += 1
-            elif args[i] == "ex" and i + 1 < len(args):
+            elif args[i].lower() == "ex" and i + 1 < len(args):
                 ex = decode(args[i + 1], int)
                 if ex <= 0:
                     raise DBError("Invalid expire time")
                 i += 2
-            elif args[i] == "px" and i + 1 < len(args):
+            elif args[i].lower() == "px" and i + 1 < len(args):
                 px = decode(args[i + 1], int)
                 if px <= 0:
                     raise DBError("Invalid expire time")
@@ -129,16 +129,16 @@ class ProtoRedis(object):
 
         i, nx, xx, ch, incr = 0, False, False, False, False
         while i < len(args):
-            if args[i] == "nx":
+            if args[i].lower() == "nx":
                 nx = True
                 i += 1
-            elif args[i] == "xx":
+            elif args[i].lower() == "xx":
                 xx = True
                 i += 1
-            elif args[i] == "ch":
+            elif args[i].lower() == "ch":
                 ch = True
                 i += 1
-            elif args[i] == "incr":
+            elif args[i].lower() == "incr":
                 incr = True
                 i += 1
             else:
@@ -174,7 +174,7 @@ class ProtoRedis(object):
         zset = self.get(key)
         if zset == -1:
             return []
-        if len(args) > 1 or (args and args[0] != "withscores"):
+        if len(args) > 1 or (args and args[0].lower() != "withscores"):
             raise DBError("Syntax Error")
         start, stop = self._fix_range(start, stop, len(zset))
         if reverse:
