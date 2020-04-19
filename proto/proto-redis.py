@@ -97,7 +97,44 @@ class ProtoRedis(object):
         return int(self.expired[key] - time.monotonic())
 
     def zadd(self, key, *args):
-        pass
+        zset = self.get(key)
+        if zset == -1:
+            self.set(key, ZSet())
+            zset = self.get(key)
+
+        i, nx, xx, ch = 0, False, False, False
+        while i < len(args):
+            if args[i] == "nx":
+                nx = True
+                i += 1
+            elif args[i] == "xx":
+                xx = True
+                i += 1
+            elif args[i] == "ch":
+                ch = True
+                i += 1
+            else:
+                break
+
+        if nx and xx:
+            raise DBError("Can't have both nx and xx in zadd")
+
+        els = args[i:]
+        if not els or len(els) % 2 != 0:
+            raise DBError("Syntax Error")
+        # Parse all scores first, before updating
+        items = [(decode(els[j], float), els[j + 1])
+                 for j in range(0, len(els), 2)]
+        l_prev = len(zset)
+        changed = 0
+
+        for score, mem in items:
+            if (not nx or mem not in zset) and (not xx or mem in zset):
+                changed += int(zset.add(mem, score))
+
+        if ch:
+            return changed
+        return len(zset) - l_prev
 
     def zrange(self, key, start, stop, scored=False):
         pass
@@ -111,14 +148,36 @@ class ZSet:
         self.mem2score = {}
         self.scores = SortedSet()
 
+    def __contains__(self, val):
+        return val in self.mem2score
+
+    def __setitem__(self, val, score):
+        self.add(val, score)
+
+    def __getitem__(self, key):
+        return self.mem2score[key]
+
+    def __len__(self):
+        return len(self.mem2score)
+
+    def __iter__(self):
+        def f():
+            for score, val in self.scores:
+                yield val
+        return f()
+
+    def get(self, key, default=None):
+        return self.mem2score.get(key, default)
+
     def add(self, val, score):
         s_prev = self.mem2score.get(val, None)
         if s_prev:
             if s_prev == score:
                 return False
             self.scores.remove((s_prev, val))
-
-        pass
+        self.mem2score[val] = score
+        self.scores.add((score, val))
+        return True
 
 
 class Error(Exception):
