@@ -44,7 +44,7 @@ class ProtoRedis(object):
                 if self.expired[k] == 0 or time.monotonic() - self.expired[k] < 0:
                     del self.cache[k]
                     del self.expired[k]
-            if (1 - len(self.expired)/old_len) < .25:
+            if 4 * (old_len - len(self.expired)) < old_len:
                 break
 
     def ping(self, message="PONG"):
