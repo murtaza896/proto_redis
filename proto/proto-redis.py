@@ -7,10 +7,9 @@ import random
 
 def decode(a, dtype):
     try:
-        ans = dtype(a)
+        return dtype(a)
     except ValueError:
         raise DBError("Invalid conversion from one type to another")
-    return ans
 
 
 class ProtoRedis(object):
@@ -49,6 +48,9 @@ class ProtoRedis(object):
 
     def ping(self, message="PONG"):
         return message
+
+    def invalid(self, *args):
+        raise DBError("ERR: Invalid Command")
 
     def set(self, key, val, *args):
         # SET key val [EX secs| PX msecs] [NX set if key not exist| XX set if key exist] [KEEPTTL]
@@ -90,16 +92,16 @@ class ProtoRedis(object):
         if timer:
             self.expired[key] = timer
         self.cache[key] = val
-        return "OK"
+        return True
 
     def get(self, key):
         if not self.__exists(key):
-            return -1
+            return None
 
         if self.__have_expired(key):
             del self.expired[key]
             del self.cache[key]
-            return -1
+            return None
 
         val = self.cache[key]
         return val
@@ -114,7 +116,7 @@ class ProtoRedis(object):
         if not self.__exists(key):
             return -2
         elif key not in self.expired:
-            return -1
+            return None
         elif self.__have_expired(key):
             del self.expired[key]
             del self.cache[key]
@@ -123,7 +125,7 @@ class ProtoRedis(object):
 
     def zadd(self, key, *args):
         zset = self.get(key)
-        if zset == -1:
+        if not zset:
             self.set(key, ZSet())
             zset = self.get(key)
 
@@ -172,8 +174,8 @@ class ProtoRedis(object):
 
     def __zrange_generic(self, key, start, stop, reverse, *args):
         zset = self.get(key)
-        if zset == -1:
-            return []
+        if not zset:
+            return None
         if len(args) > 1 or (args and args[0].lower() != "withscores"):
             raise DBError("Syntax Error")
         start, stop = self._fix_range(start, stop, len(zset))
@@ -193,7 +195,7 @@ class ProtoRedis(object):
 
     def zrank(self, key, member):
         zset = self.get(key)
-        if zset == -1:
+        if not zset:
             return None
         try:
             return zset.rank(member)
@@ -261,3 +263,6 @@ class Error(Exception):
 class DBError(Error):
     def __init__(self, message):
         self.message = message
+
+    def __str__(self):
+        return self.message
