@@ -53,6 +53,7 @@ class ProtoRedisProtocol(asyncio.Protocol):
 
     def data_received(self, data: bytes):
         self.parser.feed(data)
+
         dur = time.monotonic() - self.timer
         if dur >= .1:
             self._db.purger()

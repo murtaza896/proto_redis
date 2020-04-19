@@ -37,9 +37,13 @@ class ProtoRedis(object):
         return lo, hi + 1
 
     def purger(self):
+        print("In purger")
         while True:
+            print("In loop")
             old_len = len(self.expired)
             smpl_sz = min(20, old_len)
+            if smpl_sz < 20:
+                return
             sample = random.sample(self.expired.keys(), smpl_sz)
             for k in sample:
                 if self.expired[k] == 0 or time.monotonic() - self.expired[k] < 0:
@@ -47,6 +51,8 @@ class ProtoRedis(object):
                     del self.expired[k]
             if 4 * (old_len - len(self.expired)) < old_len:
                 break
+            print("{} purged".format(1 - (old_len/len(self.expired))))
+        print("Exit purger")
 
     def log_dump(self, cmnd, *args):
         t = time.monotonic()
