@@ -59,7 +59,7 @@ class ProtoRedisProtocol(asyncio.Protocol):
 
             try:
                 resp = getattr(self._db, meta.get(
-                    request[0], 'invalid'))(*request[1:])
+                    request[0].lower(), 'invalid'))(*request[1:])
             except Exception as e:
                 resp = e
             finally:
