@@ -69,3 +69,12 @@ class ProtoRedis(object):
             del self.cache[key]
             return -2
         return int(self.expired[key] - time.monotonic())
+
+    def zadd(self, ss_key, cond="", changed="", incr=False, *args):
+        pass
+
+    def zrange(self, key, start, stop, scored=False):
+        pass
+
+    def zrank(self, key, member):
+        pass
