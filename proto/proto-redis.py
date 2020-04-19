@@ -1,6 +1,8 @@
 from collections import defaultdict
 from sortedcontainers import SortedSet
+
 import time
+import random
 
 
 def decode(a, dtype):
@@ -32,6 +34,18 @@ class ProtoRedis(object):
             return -1, -1
         hi = min(hi, length - 1)
         return lo, hi + 1
+
+    def purger(self):
+        while True:
+            old_len = len(self.expired)
+            smpl_sz = min(20, old_len)
+            sample = random.sample(expired.keys(), smpl_sz)
+            for k in sample:
+                if self.expired[k] == 0 or time.monotonic() - self.expired[k] < 0:
+                    del self.cache[k]
+                    del self.expired[k]
+            if (1 - len(self.expired)/old_len) < .25:
+                break
 
     def ping(self, message="PONG"):
         return message
@@ -133,7 +147,7 @@ class ProtoRedis(object):
         els = args[i:]
         if not els or len(els) % 2 != 0:
             raise DBError("Syntax Error")
-        # Parse all scores first, before updating
+
         items = [(decode(els[j], float), els[j + 1])
                  for j in range(0, len(els), 2)]
         l_prev = len(zset)
