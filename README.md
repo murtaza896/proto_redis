@@ -11,7 +11,7 @@ This is a protoype of a Redis database attached to a TCP server written in Pytho
     main('127.0.0.1','6972') # Runs server on local
 ```
 
-now connect with `redis-cli`. Any client will do even async clients.
+now connect with `redis-cli`. Any client will do. Even async clients.
 
 ## Commands
 
