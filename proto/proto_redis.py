@@ -1,5 +1,5 @@
 from collections import defaultdict
-from sortedcontainers import SortedSet
+from sortedcontainers import SortedSet, SortedList
 
 import time
 import random
@@ -75,10 +75,10 @@ class ProtoRedis(object):
                     raise DBError("Invalid expire time")
                 i += 2
             else:
-                raise DBError("Syntax Error 1")
+                raise DBError("Syntax Error")
 
         if (xx and nx) or (px is not None and ex is not None):
-            raise DBError("Syntax Error 2")
+            raise DBError("Syntax Error")
 
         if (nx and key) or (xx and not key):
             return None
@@ -128,7 +128,7 @@ class ProtoRedis(object):
     def zadd(self, key, *args):
         zset = self.get(key)
         if not zset:
-            self._set(key, ZSet())
+            self.set_(key, ZSet())
             zset = self.get(key)
 
         i, nx, xx, ch, incr = 0, False, False, False, False
@@ -178,6 +178,8 @@ class ProtoRedis(object):
         zset = self.get(key)
         if not zset:
             return None
+        #print(args, type(args), args[0], type(args[0]))
+        print(key, start, stop, reverse, args)
         if len(args) > 1 or (args and args[0].lower() != b"withscores"):
             raise DBError("Syntax Error")
         start, stop = self._fix_range(start, stop, len(zset))
@@ -185,15 +187,23 @@ class ProtoRedis(object):
             start, stop = len(zset) - stop, len(zset) - start
         items = zset.islice_score(start, stop, reverse)
         scored = bool(args)
-        items = list(map(lambda y: y if scored else y[0], map(
-            lambda x: (x[1], decode(x[0], float)), items)))
-        return items
+        items = list(map(lambda x: (x[1], decode(x[0], float)), items))
+
+        ans = []
+        for item in items:
+            ans.append(item[0])
+            if scored:
+                ans.append(str(item[1]))
+
+        print(ans)
+        return ans
 
     def zrange(self, key, start, stop, *args):
-        return self.__zrange_generic(key, start, stop, False, args)
+        #print(key, start, stop, args)
+        return self.__zrange_generic(key, int(start), int(stop), False, *args)
 
     def zrevrange(self, key, start, stop, *args):
-        return self.__zrange_generic(key, start, stop, True, args)
+        return self.__zrange_generic(key, int(start), int(stop), True, *args)
 
     def zrank(self, key, member):
         zset = self.get(key)
@@ -208,7 +218,7 @@ class ProtoRedis(object):
 class ZSet:
     def __init__(self):
         self.mem2score = {}
-        self.scores = SortedSet()
+        self.scores = SortedList()
 
     def __contains__(self, val):
         return val in self.mem2score
