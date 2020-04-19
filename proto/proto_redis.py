@@ -48,6 +48,36 @@ class ProtoRedis(object):
             if 4 * (old_len - len(self.expired)) < old_len:
                 break
 
+    def log_dump(self, cmnd, *args):
+        t = time.monotonic()
+        with open('log.txt', 'a') as fw:
+            fw.write(','.join([time, cmnd, *args]))
+
+    def replay(self):
+        with open('log.txt', 'r') as fw:
+            for line in fw.readlines():
+                curr_time = time.monotonic()
+                split_line = line.split(",")
+                tm, cmd, args = float(
+                    split_line[0]), split_line[1], split_line[2:]
+                if cmd.lower() == b"set":
+                    if b"ex" in args:
+                        dur = int(args[args.index(b"ex") + 1])
+                        if time.monotonic() > tm + dur:
+                            continue
+                    elif b"px" in args:
+                        dur = int(args[args.index(b"px") + 1])
+                        if time.monotonic() > tm + dur/1000:
+                            continue
+                    self.set(*args)
+                elif cmd.lower() == b"expire":
+                    dur = int(args)
+                    if time.monotonic() > tm + dur:
+                        continue
+                    self.expire(dur)
+                elif cmd.lower() == b"zadd":
+                    self.zadd(*args)
+
     def ping(self, message="PONG"):
         return message
 
@@ -94,6 +124,7 @@ class ProtoRedis(object):
         if timer:
             self.expired[key] = timer
         self.cache[key] = val
+        self.log_dump()
         return True
 
     def get(self, key):
@@ -112,6 +143,7 @@ class ProtoRedis(object):
         if self.__have_expired(key) or not self.__exists(key):
             return 0
         self.expired[key] = time.monotonic() + seconds
+        self.log_dump()
         return 1
 
     def ttl(self, key):
@@ -170,6 +202,7 @@ class ProtoRedis(object):
             if (not nx or mem not in zset) and (not xx or mem in zset):
                 changed += int(zset.add(mem, score))
 
+        self.log_dump('zadd')
         if ch:
             return changed
         return len(zset) - l_prev
